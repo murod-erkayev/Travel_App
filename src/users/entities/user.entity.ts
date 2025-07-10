@@ -1,53 +1,107 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { ApiProperty } from "@nestjs/swagger";
 
 @Entity()
 export class User {
-  @ApiProperty({ example: 1, description: 'Foydalanuvchi ID raqami (avtomatik yaratiladi)' })
+  @ApiProperty({
+    example: 1,
+    description: "Foydalanuvchi ID raqami (avtomatik yaratiladi)",
+  })
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 'test@example.com', description: 'Email manzili' })
-  @Column()
-  email: string;
-
-  @ApiProperty({ example: '+998901234567', description: 'Telefon raqami' })
-  @Column()
-  phone_number: string;
-
-  @ApiProperty({ example: 'hashed_password_here', description: 'Hashlangan parol' })
-  @Column()
-  password_hash: string;
-
-  @ApiProperty({ example: 'https://example.com/photo.jpg', description: 'Foydalanuvchi rasmi (URL)' })
-  @Column()
-  img_url: string;
-
-  @ApiProperty({ example: 'Erkayev Murod', description: 'Full Name' })
+  @ApiProperty({
+    example: "Erkayev Murod",
+    description: "To‘liq ism",
+  })
   @Column()
   full_name: string;
 
-  @ApiProperty({ example: 'Toshkent', description: 'Yashash manzili' })
+  @ApiProperty({
+    example: "test@example.com",
+    description: "Email manzili",
+  })
   @Column()
-  location: string;
+  email: string;
 
-  @ApiProperty({ example: 1234567890, description: 'Google account ID (raqamli)' })
+  @ApiProperty({
+    example: "+998901234567",
+    description: "Telefon raqami",
+  })
+  @Column({ nullable: true })
+  phone_number: string;
+
+  @ApiProperty({
+    example: "hashed_password_here",
+    description: "Hashlangan parol",
+  })
   @Column()
+  password_hash: string;
+
+  @ApiProperty({
+    example: "Uzbekiston",
+    description: "Yashash manzili",
+  })
+  @Column({ nullable: true })
+  country: string;
+
+  @ApiProperty({
+    example: "Toshkent",
+    description: "Yashash manzili",
+  })
+  @Column({ nullable: true })
+  city: string;
+
+  @ApiProperty({
+    example: "Toshkent shahar",
+    description: "Yashash manzili",
+  })
+  @Column({ nullable: true })
+  zip: string;
+
+  @ApiProperty({
+    example: "go'zla kochasi 34 uy",
+    description: "Yashash manzili",
+  })
+  @Column({ nullable: true })
+  address: string;
+
+  @ApiProperty({
+    example: "https://example.com/photo.jpg",
+    description: "Foydalanuvchi rasmi (URL)",
+    required: false,
+  })
+  @Column({ nullable: true })
+  img_url: string;
+
+  @ApiProperty({
+    example: 1234567890,
+    description: "Google account ID (raqamli)",
+    required: false,
+  })
+  @Column({ nullable: true })
   googleId: number;
 
-  @ApiProperty({ example: 1234567890, description: 'Google account ID (raqamli)' })
-  @Column({nullable:true})
+  @ApiProperty({
+    example: "123456",
+    description: "Tasdiqlash uchun OTP kodi (ixtiyoriy)",
+    required: false,
+  })
+  @Column({ nullable: true })
   otp: string;
-  
-  @ApiProperty({ example: "user, admin", description: 'Role' })
-  @Column()
-  role:string
 
-  @ApiProperty({ example: 'hashed_refresh_token_example', description: 'Hashed refresh token', default: " " })
-  @Column({type: 'text', nullable: true})
-  hashed_refresh_token: string |null
+  @ApiProperty({
+    example: "hashed_refresh_token_example",
+    description: "Hashed refresh token",
+    required: false,
+  })
+  @Column({ type: "text", nullable: true })
+  hashed_refresh_token: string | null;
 
-  @ApiProperty({ example: true, description: 'Foydalanuvchi faolligi (true yoki false)' })
-  @Column({default:false})
+  @ApiProperty({
+    example: true,
+    description: "Foydalanuvchi faolligi (true yoki false)",
+  })
+  @Column({ default: false })
   is_active: boolean;
 }

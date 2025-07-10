@@ -25,7 +25,6 @@ export class AuthService {
       id: user.id,
       is_active: user.is_active,
       email: user.email,
-      role: user.role,
     };
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -81,11 +80,9 @@ export class AuthService {
     if(!user) throw new BadRequestException({message:'Bunday Token Topilmadi'})
       user.hashed_refresh_token = ""
     this.usersService.save(user);
-    res.clearCookie("refreshToken");
+    res.clearCookie("refresh_token");
     return res.json({message:"Tizimdan muvafaqiyatli chiqdinggiz"})
   }
-
-
   async refreshTokenUser(req: Request, res: Response) {
     const refresh_token = req.cookies["refresh_token"];
     if (!refresh_token) {
@@ -96,7 +93,7 @@ export class AuthService {
     });
     const user = await this.usersService.findOne(payload.id);
     if (!user || !user.hashed_refresh_token) {
-      throw new BadRequestException("Admin Not Found or have not log in yet!");
+      throw new BadRequestException("User Not Found or have not log in yet!");
     }
     const isValid = await bcrypt.compare(refresh_token, user.hashed_refresh_token);
     if (!isValid) throw new UnauthorizedException("Refresh Token noto'g'ri");

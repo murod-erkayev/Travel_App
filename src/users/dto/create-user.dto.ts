@@ -1,55 +1,87 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   IsString,
   IsEmail,
   IsOptional,
   IsNumber,
-  IsEnum,
   IsUrl,
   MinLength,
   Matches,
-} from 'class-validator';
+  ValidateIf,
+} from "class-validator";
+
 export class CreateUserDto {
-  @ApiProperty({ example: 'test@example.com', description: 'Email manzili' })
-  @IsEmail()
+  @ApiProperty({ example: "test@example.com", description: "Email manzili" })
+  @IsOptional()
+  @IsEmail({}, { message: "Email noto‘g‘ri" })
   email?: string;
 
-  @ApiProperty({ example: '+998901234567', description: 'Telefon raqami' })
-  @IsString()
-  @Matches(/^\+998\d{9}$/, { message: 'Telefon raqami +998 bilan boshlanishi va 9 ta raqamdan iborat bo‘lishi kerak' })
+  @ApiProperty({ example: "+998901234567", description: "Telefon raqami" })
   phone_number: string;
 
-  @ApiProperty({ example:'Parol123!', description:'Parol (kamida 6 ta belgi)' })
+  @ApiProperty({
+    example: "Parol123!",
+    description: "Parol (kamida 6 ta belgi)",
+  })
+  @IsOptional()
   @IsString()
-  @MinLength(6)
-  password: string; 
+  @MinLength(6, { message: "Parol kamida 6 belgidan iborat bo‘lishi kerak" })
+  password: string;
 
-  @ApiProperty({ example: 'Parol123!', description: 'Parol (kamida 6 ta belgi)' })
+  @ApiProperty({ example: "Parol123!", description: "Parolni tasdiqlang" })
+  @IsOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(6, {
+    message: "Parol tasdiqlovchi ham kamida 6 belgidan iborat bo‘lishi kerak",
+  })
   confirm_password: string;
 
-  @ApiProperty({ example: 'https://example.com/photo.jpg', description: 'Profil rasmi URL manzili' })
+  @ApiProperty({ example: "Ali Valiyev", description: "To‘liq ism" })
   @IsOptional()
-  @IsUrl()
-  img_url: string;
-
-  @ApiProperty({ example: 'Ali Valiyev', description: 'Full Name' })
   @IsString()
-  full_name: string;
+  full_name?: string;
 
-  @ApiProperty({ example: 'Toshkent', description: 'Manzili' })
+  @ApiProperty({ example: "Uzbekiston", description: "Yashash manzili" })
+  @IsOptional()
   @IsString()
-  location: string;
+  country?: string;
 
-  @ApiProperty({ example: 1234567890, description: 'Google hisob ID raqami (ixtiyoriy)' })
+  @ApiProperty({ example: "Toshkent", description: "Yashash manzili" })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiProperty({ example: "Toshkent shahar", description: "Yashash manzili" })
+  @IsOptional()
+  @IsString()
+  zip?: string;
+
+  @ApiProperty({
+    example: "go'zal kochasi 35 uy",
+    description: "Yashash manzili",
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({
+    example: 1234567890,
+    description: "Google hisob ID (ixtiyoriy)",
+  })
   @IsOptional()
   @IsNumber()
-  googleId: number;
+  googleId?: number;
 
-  
-  @ApiProperty({ example: 1234567890, description: 'Google hisob ID raqami (ixtiyoriy)' })
+  @ApiProperty({ example: "123456", description: "OTP tasdiqlash kodi" })
   @IsOptional()
-  @IsNumber()
+  @IsString()
   otp: string;
+
+  @ApiProperty({
+    example: "https://example.com/photo.jpg",
+    description: "Profil rasmi URL manzili",
+  })
+  @IsOptional()
+  @IsUrl({}, { message: "To‘g‘ri URL kiriting" })
+  img_url?: string;
 }
