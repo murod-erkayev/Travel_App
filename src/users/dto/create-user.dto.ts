@@ -84,4 +84,7 @@ export class CreateUserDto {
   @IsOptional()
   @IsUrl({}, { message: "To‘g‘ri URL kiriting" })
   img_url?: string;
+
+
+  is_active:boolean
 }

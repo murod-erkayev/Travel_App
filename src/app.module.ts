@@ -6,6 +6,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { join } from "path";
 import { UsersModule } from "./users/users.module";
 import { AuthModule } from "./auth/auth.module";
+import { CategoryModule } from './category/category.module';
+import { LocationsModule } from './locations/locations.module';
+import { NotficationsModule } from './notfications/notfications.module';
+import { SearchHistoryModule } from './search_history/search_history.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: ".env", isGlobal:true }),
@@ -19,13 +23,16 @@ import { AuthModule } from "./auth/auth.module";
       entities: [__dirname+"/**/*.entity{.ts,.js}"],
       synchronize: true,
     }),
-
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/api/uploads', 
     }),
     UsersModule,
-    AuthModule
+    AuthModule,
+    CategoryModule,
+    LocationsModule,
+    NotficationsModule,
+    SearchHistoryModule
   ],
   controllers: [],
   providers: [],

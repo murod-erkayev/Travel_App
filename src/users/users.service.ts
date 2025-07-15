@@ -32,93 +32,6 @@ export class UsersService {
     return user;
   }
   /**
-   * Foydalanuvchiga ro'yxatdan o'tish uchun OTP (bir martalik parol) yuboradi.
-   * Agar bunday emailga ega foydalanuvchi mavjud bo'lsa, xato qaytaradi.
-   */
-  async sendEmailOtp(createUserDto: CreateUserDto) {
-    const { email } = createUserDto;
-
-    const user = await this.userRepo.findOne({ where: { email } });
-    if (user) {
-      throw new ConflictException(
-        "Bunday emailga ega foydalanuvchi allaqachon mavjud."
-      );
-    }
-
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresInMinutes = 5; // OTPning amal qilish muddati 5 daqiqa
-    const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
-
-    // OTPni va CreateUserDto ni muddati bilan saqlaymiz
-    this.otpStorage.set(otpCode, { userDto: createUserDto, expiresAt });
-
-    try {
-      await this.mailService.sendMailUser({
-        ...(createUserDto as any),
-        email: createUserDto.email,
-        full_name: createUserDto.full_name,
-        otp: otpCode,
-      } as unknown as User);
-      // Test uchun OTPni qaytarish production muhitida o'chirib tashlanishi kerak!
-      return {
-        message: `OTP ${email} ga muvaffaqiyatli yuborildi.`,
-        otp: otpCode,
-      };
-    } catch (error) {
-      console.error("Emailga OTP yuborishda xatolik yuz berdi:", error); // Loglash yaxshilandi
-      throw new BadRequestException(
-        "OTP yuborishda muammo yuz berdi, keyinroq urinib ko‘ring."
-      );
-    }
-  }
-
-  /**
-   * Foydalanuvchini OTP orqali faollashtiradi va ma'lumotlar bazasiga yozadi.
-   * OTP noto'g'ri bo'lsa yoki muddati o'tgan bo'lsa, xato qaytaradi.
-   */
-  async activateUser(otp: string) {
-    if (!otp) {
-      throw new BadRequestException("OTP kiritilmagan.");
-    }
-
-    const otpData = this.otpStorage.get(otp);
-    if (!otpData || otpData.expiresAt < new Date()) {
-      this.otpStorage.delete(otp); // Muddati o'tgan OTPni o'chiramiz
-      throw new BadRequestException("OTP noto‘g‘ri yoki muddati tugagan.");
-    }
-
-    const createUserDto = otpData.userDto;
-    const { password, confirm_password } = createUserDto;
-
-    if (password !== confirm_password) {
-      throw new BadRequestException("Parollar mos emas.");
-    }
-
-    const password_hashed = await bcrypt.hash(password, 7);
-
-    const newUser = this.userRepo.create({
-      ...createUserDto,
-      password_hash: password_hashed,
-      is_active: true,
-      otp: "",
-    });
-
-    try {
-      const savedUser = await this.userRepo.save(newUser); // SAQLAYAPMIZ bazaga
-      this.otpStorage.delete(otp); // Ishlatilgandan keyin OTPni o'chiramiz
-      return {
-        message: "Foydalanuvchi muvaffaqiyatli yaratildi va aktivlashtirildi.",
-        user: savedUser,
-      };
-    } catch (error) {
-      console.error("Foydalanuvchini DB ga saqlashda xatolik:", error);
-      throw new BadRequestException(
-        "Foydalanuvchini ro‘yxatdan o‘tkazishda muammo yuz berdi."
-      );
-    }
-  }
-
-  /**
    * Admin tomonidan yangi foydalanuvchi yaratish (OTP talab qilinmaydi).
    * Bunday emailga ega foydalanuvchi mavjud bo'lsa, xato qaytaradi.
    */
@@ -331,7 +244,7 @@ export class UsersService {
 
     // is_active true bo'ladi
     user.is_active = true;
-    user.password_hash = ""; // yoki null
+    // user.password_hash = ""; // yoki null
     await this.userRepo.save(user);
     this.otpStorage.delete(otp);
 

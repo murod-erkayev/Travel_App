@@ -1,5 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Notfication } from './../../notfications/entities/notfication.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { ApiProperty } from "@nestjs/swagger";
+import { SearchHistory } from '../../search_history/entities/search_history.entity';
 
 @Entity()
 export class User {
@@ -104,4 +106,10 @@ export class User {
   })
   @Column({ default: false })
   is_active: boolean;
+
+  @OneToMany(() => Notfication, (notfication) => notfication.user)
+  notfication: Notfication[];
+
+  @OneToMany(() => SearchHistory, (searchHistory) => searchHistory.user)
+  searchHistory: SearchHistory[];
 }

@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Res,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -17,39 +18,13 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { PassThrough } from "stream";
+import { Response } from "express";
 
 @ApiTags("Foydalanuvchilar")
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
-
-  @Post("send-otp")
-  @ApiOperation({ summary: "Emailga OTP yuborish" })
-  @ApiResponse({ status: 200, description: "OTP yuborildi" })
-  sendOtp(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.sendEmailOtp(createUserDto);
-  }
-
-  @Post("activate")
-  @ApiOperation({
-    summary: "OTP orqali foydalanuvchini yaratish va faollashtirish",
-  })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        otp: { type: "string", example: "123456" },
-      },
-      required: ["otp"],
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Foydalanuvchi muvaffaqiyatli faollashtirildi",
-  })
-  activate(@Body("otp") otp: string) {
-    return this.usersService.activateUser(otp);
-  }
 
   @Post()
   @ApiOperation({
