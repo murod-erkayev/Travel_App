@@ -167,6 +167,11 @@ export class AuthController {
     return this.authService.verifyOtp(body.email, body.otp, res);
   }
 
+
+
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @Post("check-register")
   @ApiOperation({ summary: "Foydalanuvchi ro'yxatdan o'tganligini tekshirish" })
   @ApiBody({
