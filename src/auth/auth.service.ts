@@ -170,6 +170,15 @@ export class AuthService {
 
   async verifyOtp(email: string, otp: string, res?: Response) {
     try {
+      if (!email || !otp) {
+        throw new BadRequestException("Email va OTP kiritilmagan.");
+      }
+
+      // Email format tekshirish
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new BadRequestException("Email format noto'g'ri.");
+      }
       // 1. User ni email va OTP bilan topish
       const user = await this.usersService.findByEmailAndOtp(email, otp);
 
