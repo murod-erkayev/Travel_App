@@ -14,10 +14,9 @@ export class JwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
   canActivate(
     context: ExecutionContext
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  ){
     const req = context.switchToHttp().getRequest();
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       throw new UnauthorizedException("Unauthorized");
     }
@@ -30,11 +29,11 @@ export class JwtAuthGuard implements CanActivate {
 
     async function verify(token: string, jwtService: JwtService) {
       let payload: any;
-
       try {
         payload = await jwtService.verify(token, {
           secret: process.env.ACCESS_TOKEN_KEY,
         });
+        // console.log("Token",payload);
       } catch (error) {
         throw new BadRequestException(error);
       }

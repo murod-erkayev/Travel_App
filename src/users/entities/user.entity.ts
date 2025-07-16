@@ -33,12 +33,6 @@ export class User {
   @Column({ nullable: true })
   phone_number: string;
 
-  @ApiProperty({
-    example: "hashed_password_here",
-    description: "Hashlangan parol",
-  })
-  @Column()
-  password_hash: string;
 
   @ApiProperty({
     example: "Uzbekiston",
@@ -106,6 +100,9 @@ export class User {
   })
   @Column({ default: false })
   is_active: boolean;
+
+  @Column({ nullable: true })
+  otp_expires_at?: Date;
 
   @OneToMany(() => Notfication, (notfication) => notfication.user)
   notfication: Notfication[];

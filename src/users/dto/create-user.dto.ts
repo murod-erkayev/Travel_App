@@ -23,19 +23,6 @@ export class CreateUserDto {
     example: "Parol123!",
     description: "Parol (kamida 6 ta belgi)",
   })
-  @IsOptional()
-  @IsString()
-  @MinLength(6, { message: "Parol kamida 6 belgidan iborat bo‘lishi kerak" })
-  password: string;
-
-  @ApiProperty({ example: "Parol123!", description: "Parolni tasdiqlang" })
-  @IsOptional()
-  @IsString()
-  @MinLength(6, {
-    message: "Parol tasdiqlovchi ham kamida 6 belgidan iborat bo‘lishi kerak",
-  })
-  confirm_password: string;
-
   @ApiProperty({ example: "Ali Valiyev", description: "To‘liq ism" })
   @IsOptional()
   @IsString()
@@ -72,9 +59,9 @@ export class CreateUserDto {
   @IsNumber()
   googleId?: number;
 
-  @ApiProperty({ example: "123456", description: "OTP tasdiqlash kodi" })
-  @IsOptional()
-  @IsString()
+  // @ApiProperty({ example: "123456", description: "OTP tasdiqlash kodi" })
+  // @IsOptional()
+  // @IsString()
   otp: string;
 
   @ApiProperty({

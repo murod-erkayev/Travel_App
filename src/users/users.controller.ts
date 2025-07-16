@@ -7,6 +7,8 @@ import {
   Param,
   Delete,
   Res,
+  UseGuards,
+  Req,
 } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "./dto/create-user.dto";
@@ -20,16 +22,17 @@ import {
 } from "@nestjs/swagger";
 import { PassThrough } from "stream";
 import { Response } from "express";
+import { JwtAuthGuard } from "../common/guards/user.guard";
 
-@ApiTags("Foydalanuvchilar")
+// @ApiTags("Users")
 @Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @ApiOperation({
-    summary: "Admin tomonidan darhol foydalanuvchi yaratish (OTP yo‘q)",
-  })
+  // @ApiOperation({
+  //   summary: "Admin tomonidan darhol foydalanuvchi yaratish (OTP yo‘q)",
+  // })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
@@ -60,78 +63,5 @@ export class UsersController {
   }
 
   //Reset Possword
-  @Post("reset-password/send-otp")
-  @ApiOperation({ summary: "Parolni tiklash uchun OTP yuborish" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        email: { type: "string", example: "user@example.com" },
-      },
-      required: ["email"],
-    },
-  })
-  sendOtpForReset(@Body("email") email: string) {
-    return this.usersService.sendOtpForResetPassword(email);
-  }
-
-  @Post("reset-password/verify-otp")
-  @ApiOperation({ summary: "Reset password uchun OTP ni tekshirish" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        otp: { type: "string", example: "123456" },
-      },
-      required: ["otp"],
-    },
-  })
-  verifyResetOtp(@Body("otp") otp: string) {
-    return this.usersService.verifyResetOtp(otp);
-  }
-
-  @Post("reset-password")
-  @ApiOperation({ summary: "Yangi parolni saqlash" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        email: { type: "string", example: "user@example.com" },
-        password: { type: "string", example: "newPassword123" },
-        confirm_password: { type: "string", example: "newPassword123" },
-      },
-      required: ["email", "password", "confirm_password"],
-    },
-  })
-  resetPassword(
-    @Body("email") email: string,
-    @Body("password") password: string,
-    @Body("confirm_password") confirm_password: string
-  ) {
-    return this.usersService.resetPassword(email, password, confirm_password);
-  }
-
-  @Post("change-password")
-  @ApiOperation({ summary: "Parolni yangilash" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        userId: { type: "number", example: 40 },
-        old_password: { type: "string", example: "Murod1972!" },
-        new_password: { type: "string", example: "Oybek1202!" },
-        confirm_password: { type: "string", example: "Oybek1202!" },
-      },
-      required: ["userId", "old_password", "new_password", "confirm_password"],
-    },
-  })
-  changePassword(@Body() body: any) {
-    const { userId, new_password, confirm_password, old_password } = body;
-    return this.usersService.changePassword(
-      userId,
-      new_password,
-      confirm_password,
-      old_password
-    );
-  }
+ 
 }

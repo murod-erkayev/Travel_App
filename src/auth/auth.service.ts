@@ -3,39 +3,34 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
-  ConflictException, // Qo'shish kerak
+  ConflictException,
+  UnprocessableEntityException, // Qo'shish kerak
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
-import { LoginDto } from "./dto/create-auth.dto";
 import { Request, Response } from "express";
-
 import { CreateUserDto } from "../users/dto/create-user.dto";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
-
+import { UpdateUserDto } from "../users/dto/update-user.dto";
 @Injectable()
 export class AuthService {
-  private otpStorage: Map<string, { userDto: CreateUserDto; expiresAt: Date }> =
-    new Map();
-
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService
   ) {}
-
   async singUpUser(dto: CreateUserDto) {
     const newAdmin = await this.usersService.create(dto);
     return { message: "Foydalanuvchi qo'shildi", userId: newAdmin.id };
   }
-
   async generateTokensUser(user: User) {
     const payload = {
       id: user.id,
       is_active: user.is_active,
       email: user.email,
     };
+    console.log("GenerateToken=>", payload);
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: process.env.ACCESS_TOKEN_KEY,
@@ -51,42 +46,39 @@ export class AuthService {
       refreshToken,
     };
   }
+  // async signInUser(signInDto: LoginDto, res: Response) {
+  //   const user = await this.usersService.findByEmail(signInDto.email);
+  //   if (!user) {
+  //     throw new BadRequestException("Email yoki Password noto'g'ri");
+  //   }
+  //   if (!user.is_active) {
+  //     throw new BadRequestException("Avval Emailni tasdiqlang");
+  //   }
 
-  async signInUser(signInDto: LoginDto, res: Response) {
-    const user = await this.usersService.findByEmail(signInDto.email);
-    if (!user) {
-      throw new BadRequestException("Email yoki Password noto'g'ri");
-    }
-    if (!user.is_active) {
-      throw new BadRequestException("Avval Emailni tasdiqlang");
-    }
+  //   const isValidPassword = await bcrypt.compare(
+  //     signInDto.password,
+  //   );
+  //   if (!isValidPassword) {
+  //     throw new BadRequestException("Email yoki Password noto'g'ri");
+  //   }
 
-    const isValidPassword = await bcrypt.compare(
-      signInDto.password,
-      user.password_hash
-    );
-    if (!isValidPassword) {
-      throw new BadRequestException("Email yoki Password noto'g'ri");
-    }
+  //   const { accessToken, refreshToken } = await this.generateTokensUser(user);
+  //   res.cookie("refresh_token", refreshToken, {
+  //     httpOnly: true,
+  //     maxAge: Number(process.env.COOKIE_TIME),
+  //   });
 
-    const { accessToken, refreshToken } = await this.generateTokensUser(user);
-    res.cookie("refresh_token", refreshToken, {
-      httpOnly: true,
-      maxAge: Number(process.env.COOKIE_TIME),
-    });
+  //   user.hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
+  //   await this.usersService.updateRefreshToken(
+  //     user.id,
+  //     user.hashed_refresh_token
+  //   );
 
-    user.hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
-    await this.usersService.updateRefreshToken(
-      user.id,
-      user.hashed_refresh_token
-    );
-
-    return {
-      message: "Tizimga xush kelibsiz",
-      accessToken,
-    };
-  }
-
+  //   return {
+  //     message: "Tizimga xush kelibsiz",
+  //     accessToken,
+  //   };
+  // }
   async logOutUser(req: Request, res: Response) {
     const token = req.cookies["refresh_token"];
     if (!token) {
@@ -101,7 +93,6 @@ export class AuthService {
     res.clearCookie("refresh_token");
     return res.json({ message: "Tizimdan muvafaqiyatli chiqdinggiz" });
   }
-
   async refreshTokenUser(req: Request, res: Response) {
     const refresh_token = req.cookies["refresh_token"];
     if (!refresh_token) {
@@ -130,111 +121,146 @@ export class AuthService {
     });
     return { RefreshToken: refreshToken };
   }
-
-  // OTP yuborish va saqlash (to'g'rilangan versiya)
-  async sendEmailOtp(createUserDto: CreateUserDto) {
-    const { email } = createUserDto;
-
-    // Mavjud foydalanuvchini tekshirish
-    const existingUser = await this.usersService.findByEmail(email!);
-    if (existingUser) {
-      throw new ConflictException(
-        "Bunday emailga ega foydalanuvchi allaqachon mavjud."
-      );
-    }
-
+  async sendOtp(email: string) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresInMinutes = 5; // OTPning amal qilish muddati 5 daqiqa
+    const expiresInMinutes = 5;
     const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
 
-    // OTPni va CreateUserDto ni muddati bilan saqlaymiz
-    this.otpStorage.set(otpCode, { userDto: createUserDto, expiresAt });
-
     try {
-      await this.mailService.sendMailUser({
-        ...(createUserDto as any),
-        email: createUserDto.email,
-        full_name: createUserDto.full_name,
-        otp: otpCode,
-      } as unknown as User);
+      // User topish yoki yaratish
+      let user = await this.usersService.findByEmail(email);
 
-      // Test uchun OTPni qaytarish production muhitida o'chirib tashlanishi kerak!
-      return {
-        message: `OTP ${email} ga muvaffaqiyatli yuborildi.`,
+      if (!user) {
+        // Yangi user yaratish OTP bilan
+        console.log("Opt", otpCode);
+        user = await this.usersService.create({
+          email: email,
+          full_name: "User",
+          phone_number: "",
+          otp: otpCode,
+          otp_expires_at: expiresAt,
+          is_active: false, // OTP verify qilguncha false
+        } as CreateUserDto);
+      } else {
+        // Mavjud user ga yangi OTP qo'yish
+        await this.usersService.updateOtp(user.id, otpCode, expiresAt);
+      }
+      // Mail yuborish
+      const userForMail = {
+        id: user.id,
+        email: email,
+        full_name: user.full_name,
+        phone_number: "",
         otp: otpCode,
+      } as User;
+
+      await this.mailService.sendMailUser(userForMail);
+      return {
+        message: `OTP ${email} ga yuborildi.`,
+        otp: otpCode, // Production'da o'chiring
       };
     } catch (error) {
-      console.error("Emailga OTP yuborishda xatolik yuz berdi:", error);
-      throw new BadRequestException(
-        "OTP yuborishda muammo yuz berdi, keyinroq urinib ko'ring."
-      );
+      console.error("OTP yuborishda xatolik:", error);
+      throw new BadRequestException("OTP yuborilmadi.");
     }
   }
-  async activateUser(otp: string, res: Response) {
-    if (!otp) {
-      throw new BadRequestException("OTP kiritilmagan.");
-    }
-
-    const otpData = this.otpStorage.get(otp);
-    if (!otpData || otpData.expiresAt < new Date()) {
-      this.otpStorage.delete(otp);
-      throw new BadRequestException("OTP noto'g'ri yoki muddati tugagan.");
-    }
-
-    const createUserDto = otpData.userDto;
-    const { password, confirm_password } = createUserDto;
-
-    if (password !== confirm_password) {
-      throw new BadRequestException("Parollar mos emas.");
-    }
-
+  async verifyOtp(email: string, otp: string, res?: Response) {
     try {
-      // UsersService orqali user yaratish
-      const savedUser = await this.usersService.create({
-        ...createUserDto,
-        is_active: true,
-        otp: "", // Bo'sh qilib qo'yish
-      } as CreateUserDto); // Type assertion qo'shish
+      // 1. User ni email va OTP bilan topish
+      const user = await this.usersService.findByEmailAndOtp(email, otp);
 
-      // Token generatsiya qilish
-      const { accessToken, refreshToken } =
-        await this.generateTokensUser(savedUser);
+      if (!user) {
+        throw new BadRequestException("Email yoki OTP noto'g'ri.");
+      }
+      // 2. Muddat tekshirish
+      if (!user.otp_expires_at || user.otp_expires_at < new Date()) {
+        throw new BadRequestException("OTP muddati tugagan.");
+      }
 
-      // Refresh token ni hash qilib saqlash
+      // 3. SUCCESS! OTP ni tozalash va aktivlashtirish
+      await this.usersService.clearOtpAndActivate(user.id);
+      // 4. Token generation
+      const { accessToken, refreshToken } = await this.generateTokensUser(user);
+
+      // 5. Refresh token saqlash
       const hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
-      await this.usersService.updateRefreshToken(
-        savedUser.id,
-        hashed_refresh_token
-      );
+      await this.usersService.updateRefreshToken(user.id, hashed_refresh_token);
 
-      // Cookie ga refresh token ni saqlash
-      res.cookie("refresh_token", refreshToken, {
-        httpOnly: true,
-        maxAge: Number(process.env.COOKIE_TIME),
-      });
-
-      // OTP ni o'chirish
-      this.otpStorage.delete(otp);
+      // 6. Cookie ga refresh token saqlash
+      if (res) {
+        res.cookie("refresh_token", refreshToken, {
+          httpOnly: true,
+          maxAge: Number(process.env.COOKIE_TIME),
+        });
+      }
 
       return {
-        message: "Foydalanuvchi muvaffaqiyatli yaratildi va aktivlashtirildi.",
+        message: "Muvaffaqiyatli!",
         user: {
-          id: savedUser.id,
-          full_name: savedUser.full_name,
-          email: savedUser.email,
-          phone_number: savedUser.phone_number,
-          country: savedUser.country,
-          city: savedUser.city,
-          is_active: savedUser.is_active,
+          id: user.id,
+          email: user.email,
+          full_name: user.full_name,
+          is_active: true,
         },
-        accessToken, // Bu token frontend ga yuboriladi
-        // refreshToken cookie da saqlanadi (httpOnly)
+        accessToken,
       };
     } catch (error) {
-      console.error("Foydalanuvchini DB ga saqlashda xatolik:", error);
-      throw new BadRequestException(
-        "Foydalanuvchini ro'yxatdan o'tkazishda muammo yuz berdi."
-      );
+      console.error("OTP verification da xatolik:", error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException("Tasdiqlashda muammo yuz berdi.");
+    }
+  }
+  async checkRegister(email: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (user && user.is_active) {
+      return {
+        isRegister: true,
+        message: "Foydalanuvchi allaqachon rohatdan otgan",
+        status: 201,
+      };
+    } else {
+      return {
+        isRegister: false,
+        message: "Foydalanuvchi hali registratsiya qilinmagan",
+        status: 422,
+      };
+    }
+  }
+  async getProfile(id: number) {
+    const user = await this.usersService.findOne(id);
+    if (!user) {
+      throw new BadRequestException({ message: "Bunday user mavjud emas" });
+    }
+    const { hashed_refresh_token, otp, otp_expires_at, ...cleanUser } = user;
+    return cleanUser;
+  }
+  async editProfile(id: number, updateData: UpdateUserDto) {
+    try {
+      const updatedUser = await this.usersService.update(id, updateData);
+      return {
+        message: "Profile muvaffaqiyatli yangilandi",
+        user: {
+          id: updatedUser.id,
+          full_name: updatedUser.full_name,
+          email: updatedUser.email,
+          phone_number: updatedUser.phone_number,
+          country: updatedUser.country,
+          city: updatedUser.city,
+          address: updatedUser.address,
+          img_url: updatedUser.img_url,
+        },
+      };
+    } catch (error) {
+      // Sizning usersService'dagi errorlar avtomatik throw bo'ladi
+      throw error;
     }
   }
 }
+
+
+
+
+
