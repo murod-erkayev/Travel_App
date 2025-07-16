@@ -27,6 +27,14 @@ export class Category {
   description: string;
 
   @ApiProperty({
+    example: "img_dsfsgsf.png",
+    description: "Category Rasmini yubrish uchun",
+    required: false,
+  })
+  @Column({ nullable: true })
+  category_img_url: string;
+
+  @ApiProperty({
     description: "Ushbu kategoriyaga tegishli locationlar",
     type: () => [Location],
     required: false,

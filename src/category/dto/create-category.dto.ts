@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString, IsOptional } from "class-validator";
+import { IsNotEmpty, IsString, IsOptional, isNotEmpty } from "class-validator";
 
 export class CreateCategoryDto {
   @ApiProperty({
@@ -8,7 +8,7 @@ export class CreateCategoryDto {
   })
   @IsString()
   @IsNotEmpty()
-  name: string; 
+  name: string;
 
   @ApiProperty({
     example: "Sarguzasht va ekstremal faoliyatlar",
@@ -16,6 +16,15 @@ export class CreateCategoryDto {
     required: false,
   })
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   description?: string;
+
+  @ApiProperty({
+    example: "img_dsfsgsf.png",
+    description: "Category Rasmini yubrish uchun",
+    required: false,
+  })
+  @IsString()
+  @IsNotEmpty()
+  category_img_url?: string;
 }

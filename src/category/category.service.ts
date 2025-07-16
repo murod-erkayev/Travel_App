@@ -46,6 +46,6 @@ export class CategoryService {
   async remove(id: number) {
     const category = await this.findOne(id);
     await this.categoryRepository.remove(category);
-    return { message: `Category deleted successfully` };
+    return { message: `Category deleted successfully`, status:200 };
   }
 }
