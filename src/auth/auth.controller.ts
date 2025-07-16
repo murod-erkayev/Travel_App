@@ -19,8 +19,6 @@ import {
   ApiBearerAuth,
 } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
-import { LoginDto } from "./dto/create-auth.dto";
-import { CreateUserDto } from "../users/dto/create-user.dto";
 import { Request, Response } from "express";
 import { JwtAuthGuard } from "../common/guards/user.guard";
 import { UpdateUserDto } from "../users/dto/update-user.dto";
@@ -28,39 +26,30 @@ import { UpdateUserDto } from "../users/dto/update-user.dto";
 @ApiTags("Authentication")
 @Controller("auth")
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService
-    // UsersService ni o'chirib tashlash - AuthService da bor
-  ) {}
-
-  // @Post("log-up-user")
-  // @HttpCode(200)
-  // @ApiOperation({ summary: "Yangi foydalanuvchini ro'yxatdan o'tkazish" })
-  // @ApiBody({ type: CreateUserDto })
-  // @ApiResponse({
-  //   status: 200,
-  //   description: "Foydalanuvchi muvaffaqiyatli ro'yxatdan o'tdi",
-  // })
-  // async logUp(@Body() createUserDto: CreateUserDto) {
-  //   return this.authService.singUpUser(createUserDto);
-  // }
-
-  // @Post("log-in-user")
-  // @HttpCode(200)
-  // @ApiOperation({ summary: "Foydalanuvchini tizimga kirishi" })
-  // @ApiBody({ type: LoginDto })
-  // @ApiResponse({ status: 200, description: "Login muvaffaqiyatli" })
-  // async loginStudent(
-  //   @Body() loginDto: LoginDto,
-  //   @Res({ passthrough: true }) res: Response
-  // ) {
-  //   return this.authService.signInUser(loginDto, res);
-  // }
+  constructor(private readonly authService: AuthService) {}
 
   @Post("log-out-user")
   @ApiOperation({ summary: "Tizimdan chiqish" })
   @ApiCookieAuth("refresh_token")
-  @ApiResponse({ status: 200, description: "Log out muvaffaqiyatli" })
+  @ApiResponse({
+    status: 200,
+    description: "Log out muvaffaqiyatli",
+    schema: {
+      example: {
+        message: "Tizimdan muvaffaqiyatli chiqildi",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Refresh token yo'q yoki noto'g'ri",
+    schema: {
+      example: {
+        statusCode: 401,
+        message: "Refresh token topilmadi",
+      },
+    },
+  })
   async signOutStudent(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
@@ -69,16 +58,35 @@ export class AuthController {
   }
 
   @Get("refresh-token-user")
-  @ApiOperation({ summary: "Tokenni yangilash" })
+  @ApiOperation({ summary: "Access token'ni yangilash" })
   @ApiCookieAuth("refresh_token")
-  @ApiResponse({ status: 200, description: "Token yangilandi" })
+  @ApiResponse({
+    status: 200,
+    description: "Token muvaffaqiyatli yangilandi",
+    schema: {
+      example: {
+        message: "Token yangilandi",
+        accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Refresh token yo'q yoki muddati tugagan",
+    schema: {
+      example: {
+        statusCode: 401,
+        message: "Refresh token noto'g'ri",
+      },
+    },
+  })
   async refreshStudent(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
     return this.authService.refreshTokenUser(req, res);
   }
-  //Send Opt
+
   @Post("send-otp")
   @ApiOperation({ summary: "Emailga OTP yuborish" })
   @ApiBody({
@@ -90,39 +98,75 @@ export class AuthController {
       required: ["email"],
     },
   })
-  @ApiResponse({ status: 200, description: "OTP yuborildi" })
+  @ApiResponse({
+    status: 201,
+    description: "OTP muvaffaqiyatli yuborildi",
+    schema: {
+      example: {
+        message: "OTP murodjonerkayev18@gmail.com ga yuborildi.",
+        otp: "123456",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Email noto'g'ri yoki OTP yuborishda xatolik",
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "OTP yuborilmadi.",
+      },
+    },
+  })
   sendOtp(@Body() body: { email: string }) {
-    return this.authService.sendOtp(body.email); // Faqat email yuborish
+    return this.authService.sendOtp(body.email);
   }
 
   @Post("verify-otp")
-  @ApiOperation({
-    summary: "OTP ni tasdiqlash va token olish (SignUp/SignIn)",
-  })
+  @ApiOperation({ summary: "OTP ni tasdiqlash va token olish (SignUp/SignIn)" })
   @ApiBody({
     schema: {
       type: "object",
       properties: {
-        email: { type: "string", example: "user@example.com" },
+        email: { type: "string", example: "murodjonerkayev18@gmail.com" },
         otp: { type: "string", example: "123456" },
       },
       required: ["email", "otp"],
     },
   })
   @ApiResponse({
-    status: 200,
-    description: "Muvaffaqiyatli tasdiqlandi va token berildi",
+    status: 201,
+    description: "OTP tasdiqlandi va token berildi",
+    schema: {
+      example: {
+        message: "Muvaffaqiyatli!",
+        user: {
+          id: 1,
+          email: "murodjonerkayev18@gmail.com",
+          full_name: "User",
+          is_active: true,
+        },
+        accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "OTP noto'g'ri yoki muddati tugagan",
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "Email yoki OTP noto'g'ri.",
+      },
+    },
   })
   verifyOtp(
-    @Body()
-    body: {
-      email: string;
-      otp: string;
-    },
+    @Body() body: { email: string; otp: string },
     @Res({ passthrough: true }) res: Response
   ) {
     return this.authService.verifyOtp(body.email, body.otp, res);
   }
+
   @Post("check-register")
   @ApiOperation({ summary: "Foydalanuvchi ro'yxatdan o'tganligini tekshirish" })
   @ApiBody({
@@ -135,12 +179,12 @@ export class AuthController {
     },
   })
   @ApiResponse({
-    status: 200,
+    status: 201,
     description: "Foydalanuvchi ro'yxatdan o'tgan",
     schema: {
       example: {
         isregister: true,
-        message: "Foydalanuvchi ro'yxatdan o'tgan",
+        message: "Foydalanuvchi allaqachon ro'yxatdan o'tgan.",
       },
     },
   })
@@ -150,7 +194,17 @@ export class AuthController {
     schema: {
       example: {
         isregister: false,
-        message: "Siz hali ro'yxatdan o'tmagansiz",
+        message: "Siz hali ro'yxatdan o'tmagansiz. Iltimos, ro'yxatdan o'ting.",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Tekshirishda xatolik",
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "Tekshirishda xatolik yuz berdi.",
       },
     },
   })
@@ -160,8 +214,47 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get("profile-get")
-  @ApiOperation({ summary: "User profile ma'lumotlari" })
+  @ApiOperation({ summary: "User profile ma'lumotlarini olish" })
   @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Profile ma'lumotlari muvaffaqiyatli olindi",
+    schema: {
+      example: {
+        id: 1,
+        full_name: "John Doe",
+        email: "john@example.com",
+        phone_number: "+998901234567",
+        country: "Uzbekistan",
+        city: "Tashkent",
+        zip: "100000",
+        address: "Chilonzor tumani",
+        img_url: "https://example.com/avatar.jpg",
+        googleId: null,
+        is_active: true,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Token yo'q yoki noto'g'ri",
+    schema: {
+      example: {
+        statusCode: 401,
+        message: "Unauthorized",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Foydalanuvchi topilmadi",
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "Bunday user mavjud emas",
+      },
+    },
+  })
   async getProfile(@Req() req: any) {
     const { id } = req.user;
     return this.authService.getProfile(id);
@@ -169,9 +262,59 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch("profile-update")
-  @ApiOperation({ summary: "User profile yangilash" })
+  @ApiOperation({ summary: "User profile ma'lumotlarini yangilash" })
   @ApiBody({ type: UpdateUserDto })
   @ApiBearerAuth()
+  @ApiResponse({
+    status: 200,
+    description: "Profile muvaffaqiyatli yangilandi",
+    schema: {
+      example: {
+        message: "Profile muvaffaqiyatli yangilandi",
+        user: {
+          id: 1,
+          full_name: "Updated Name",
+          email: "updated@example.com",
+          phone_number: "+998123456789",
+          country: "Uzbekistan",
+          city: "Tashkent",
+          zip: "100000",
+          address: "Yangi manzil",
+          img_url: "https://example.com/new-avatar.jpg",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Token yo'q yoki noto'g'ri",
+    schema: {
+      example: {
+        statusCode: 401,
+        message: "Unauthorized",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Foydalanuvchi topilmadi",
+    schema: {
+      example: {
+        statusCode: 404,
+        message: "ID: 1 bo'yicha foydalanuvchi topilmadi.",
+      },
+    },
+  })
+  @ApiResponse({
+    status: 409,
+    description: "Email yoki telefon raqam allaqachon mavjud",
+    schema: {
+      example: {
+        statusCode: 409,
+        message: "Bunday emailga ega foydalanuvchi allaqachon mavjud.",
+      },
+    },
+  })
   async editProfile(@Req() req: any, @Body() updateUserDto: UpdateUserDto) {
     const userId = req.user.id;
     return this.authService.editProfile(userId, updateUserDto);

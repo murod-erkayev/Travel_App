@@ -4,7 +4,8 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  UnprocessableEntityException, // Qo'shish kerak
+  UnprocessableEntityException,
+  NotFoundException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
@@ -13,6 +14,7 @@ import { CreateUserDto } from "../users/dto/create-user.dto";
 import { User } from "../users/entities/user.entity";
 import { MailService } from "../mail/mail.service";
 import { UpdateUserDto } from "../users/dto/update-user.dto";
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -20,10 +22,12 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService
   ) {}
+
   async singUpUser(dto: CreateUserDto) {
     const newAdmin = await this.usersService.create(dto);
     return { message: "Foydalanuvchi qo'shildi", userId: newAdmin.id };
   }
+
   async generateTokensUser(user: User) {
     const payload = {
       id: user.id,
@@ -31,6 +35,7 @@ export class AuthService {
       email: user.email,
     };
     console.log("GenerateToken=>", payload);
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: process.env.ACCESS_TOKEN_KEY,
@@ -41,86 +46,82 @@ export class AuthService {
         expiresIn: process.env.REFRESH_TOKEN_TIME,
       }),
     ]);
+
     return {
       accessToken,
       refreshToken,
     };
   }
-  // async signInUser(signInDto: LoginDto, res: Response) {
-  //   const user = await this.usersService.findByEmail(signInDto.email);
-  //   if (!user) {
-  //     throw new BadRequestException("Email yoki Password noto'g'ri");
-  //   }
-  //   if (!user.is_active) {
-  //     throw new BadRequestException("Avval Emailni tasdiqlang");
-  //   }
 
-  //   const isValidPassword = await bcrypt.compare(
-  //     signInDto.password,
-  //   );
-  //   if (!isValidPassword) {
-  //     throw new BadRequestException("Email yoki Password noto'g'ri");
-  //   }
-
-  //   const { accessToken, refreshToken } = await this.generateTokensUser(user);
-  //   res.cookie("refresh_token", refreshToken, {
-  //     httpOnly: true,
-  //     maxAge: Number(process.env.COOKIE_TIME),
-  //   });
-
-  //   user.hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
-  //   await this.usersService.updateRefreshToken(
-  //     user.id,
-  //     user.hashed_refresh_token
-  //   );
-
-  //   return {
-  //     message: "Tizimga xush kelibsiz",
-  //     accessToken,
-  //   };
-  // }
   async logOutUser(req: Request, res: Response) {
     const token = req.cookies["refresh_token"];
     if (!token) {
       console.log("Token1", token);
-      throw new BadRequestException({ message: "Bunday Token Yo'q" });
+      throw new UnauthorizedException("Refresh token topilmadi");
     }
-    const user = await this.usersService.findByToken(token);
-    if (!user)
-      throw new BadRequestException({ message: "Bunday Token Topilmadi" });
-    user.hashed_refresh_token = "";
-    this.usersService.save(user);
-    res.clearCookie("refresh_token");
-    return res.json({ message: "Tizimdan muvafaqiyatli chiqdinggiz" });
+
+    try {
+      const user = await this.usersService.findByToken(token);
+      if (!user) {
+        throw new UnauthorizedException("Bunday token topilmadi");
+      }
+
+      user.hashed_refresh_token = "";
+      await this.usersService.save(user);
+      res.clearCookie("refresh_token");
+
+      return { message: "Tizimdan muvaffaqiyatli chiqildi" };
+    } catch (error) {
+      console.error("Logout da xatolik:", error);
+      throw new UnauthorizedException("Logout qilishda xatolik");
+    }
   }
+
   async refreshTokenUser(req: Request, res: Response) {
     const refresh_token = req.cookies["refresh_token"];
     if (!refresh_token) {
-      throw new BadRequestException("Refresh Token not available!");
+      throw new UnauthorizedException("Refresh token topilmadi");
     }
-    const payload = await this.jwtService.verify(refresh_token, {
-      secret: process.env.REFRESH_TOKEN_KEY,
-    });
-    const user = await this.usersService.findOne(payload.id);
-    if (!user || !user.hashed_refresh_token) {
-      throw new BadRequestException("User Not Found or have not log in yet!");
-    }
-    const isValid = await bcrypt.compare(
-      refresh_token,
-      user.hashed_refresh_token
-    );
-    if (!isValid) throw new UnauthorizedException("Refresh Token noto'g'ri");
-    const { accessToken, refreshToken } = await this.generateTokensUser(user);
-    const hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
-    user.hashed_refresh_token = hashed_refresh_token;
-    this.usersService.save(user);
 
-    res.cookie("refresh_token", refreshToken, {
-      maxAge: Number(process.env.COOKIE_TIME),
-      httpOnly: true,
-    });
-    return { RefreshToken: refreshToken };
+    try {
+      const payload = await this.jwtService.verify(refresh_token, {
+        secret: process.env.REFRESH_TOKEN_KEY,
+      });
+
+      const user = await this.usersService.findOne(payload.id);
+      if (!user || !user.hashed_refresh_token) {
+        throw new UnauthorizedException("User topilmadi yoki login qilmagan");
+      }
+
+      const isValid = await bcrypt.compare(
+        refresh_token,
+        user.hashed_refresh_token
+      );
+      if (!isValid) {
+        throw new UnauthorizedException("Refresh token noto'g'ri");
+      }
+
+      const { accessToken, refreshToken } = await this.generateTokensUser(user);
+      const hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
+
+      user.hashed_refresh_token = hashed_refresh_token;
+      await this.usersService.save(user);
+
+      res.cookie("refresh_token", refreshToken, {
+        maxAge: Number(process.env.COOKIE_TIME),
+        httpOnly: true,
+      });
+
+      return {
+        message: "Token yangilandi",
+        accessToken,
+      };
+    } catch (error) {
+      console.error("Refresh token da xatolik:", error);
+      throw new UnauthorizedException("Refresh token noto'g'ri");
+    }
   }
+
   async sendOtp(email: string) {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresInMinutes = 5;
@@ -145,6 +146,7 @@ export class AuthService {
         // Mavjud user ga yangi OTP qo'yish
         await this.usersService.updateOtp(user.id, otpCode, expiresAt);
       }
+
       // Mail yuborish
       const userForMail = {
         id: user.id,
@@ -155,6 +157,7 @@ export class AuthService {
       } as User;
 
       await this.mailService.sendMailUser(userForMail);
+
       return {
         message: `OTP ${email} ga yuborildi.`,
         otp: otpCode, // Production'da o'chiring
@@ -164,6 +167,7 @@ export class AuthService {
       throw new BadRequestException("OTP yuborilmadi.");
     }
   }
+
   async verifyOtp(email: string, otp: string, res?: Response) {
     try {
       // 1. User ni email va OTP bilan topish
@@ -172,6 +176,7 @@ export class AuthService {
       if (!user) {
         throw new BadRequestException("Email yoki OTP noto'g'ri.");
       }
+
       // 2. Muddat tekshirish
       if (!user.otp_expires_at || user.otp_expires_at < new Date()) {
         throw new BadRequestException("OTP muddati tugagan.");
@@ -179,14 +184,22 @@ export class AuthService {
 
       // 3. SUCCESS! OTP ni tozalash va aktivlashtirish
       await this.usersService.clearOtpAndActivate(user.id);
-      // 4. Token generation
-      const { accessToken, refreshToken } = await this.generateTokensUser(user);
 
-      // 5. Refresh token saqlash
+      // 4. FRESH user data olish
+      const updatedUser = await this.usersService.findOne(user.id);
+
+      // 5. Token generation (fresh data bilan)
+      const { accessToken, refreshToken } =
+        await this.generateTokensUser(updatedUser);
+
+      // 6. Refresh token saqlash
       const hashed_refresh_token = await bcrypt.hash(refreshToken, 7);
-      await this.usersService.updateRefreshToken(user.id, hashed_refresh_token);
+      await this.usersService.updateRefreshToken(
+        updatedUser.id,
+        hashed_refresh_token
+      );
 
-      // 6. Cookie ga refresh token saqlash
+      // 7. Cookie ga refresh token saqlash
       if (res) {
         res.cookie("refresh_token", refreshToken, {
           httpOnly: true,
@@ -197,10 +210,10 @@ export class AuthService {
       return {
         message: "Muvaffaqiyatli!",
         user: {
-          id: user.id,
-          email: user.email,
-          full_name: user.full_name,
-          is_active: true,
+          id: updatedUser.id,
+          email: updatedUser.email,
+          full_name: updatedUser.full_name,
+          is_active: updatedUser.is_active, // Fresh data
         },
         accessToken,
       };
@@ -213,33 +226,60 @@ export class AuthService {
       throw new BadRequestException("Tasdiqlashda muammo yuz berdi.");
     }
   }
+
   async checkRegister(email: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (user && user.is_active) {
-      return {
-        isRegister: true,
-        message: "Foydalanuvchi allaqachon rohatdan otgan",
-        status: 201,
-      };
-    } else {
-      return {
-        isRegister: false,
-        message: "Foydalanuvchi hali registratsiya qilinmagan",
-        status: 422,
-      };
+    try {
+      const user = await this.usersService.findByEmail(email);
+
+      if (user && user.is_active) {
+        return {
+          isregister: true, // ✅ Swagger'da shunday
+          message: "Foydalanuvchi allaqachon ro'yxatdan o'tgan.",
+        };
+      } else {
+        throw new UnprocessableEntityException({
+          isregister: false, // ✅ Swagger'da shunday
+          message:
+            "Siz hali ro'yxatdan o'tmagansiz. Iltimos, ro'yxatdan o'ting.",
+        });
+      }
+    } catch (error) {
+      console.error("Check register da xatolik:", error);
+
+      if (error instanceof UnprocessableEntityException) {
+        throw error;
+      }
+      throw new BadRequestException("Tekshirishda xatolik yuz berdi.");
     }
   }
+
   async getProfile(id: number) {
-    const user = await this.usersService.findOne(id);
-    if (!user) {
-      throw new BadRequestException({ message: "Bunday user mavjud emas" });
+    try {
+      const user = await this.usersService.findOne(id);
+
+      if (!user) {
+        throw new BadRequestException("Bunday user mavjud emas");
+      }
+
+      // Sensitive ma'lumotlarni olib tashlash
+      const { hashed_refresh_token, otp, otp_expires_at, ...cleanUser } = user;
+
+      // ✅ Swagger format'iga mos - direct user object
+      return cleanUser;
+    } catch (error) {
+      console.error("Profile olishda xatolik:", error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException("Profile ma'lumotlarini olishda xatolik.");
     }
-    const { hashed_refresh_token, otp, otp_expires_at, ...cleanUser } = user;
-    return cleanUser;
   }
+
   async editProfile(id: number, updateData: UpdateUserDto) {
     try {
       const updatedUser = await this.usersService.update(id, updateData);
+
       return {
         message: "Profile muvaffaqiyatli yangilandi",
         user: {
@@ -249,18 +289,23 @@ export class AuthService {
           phone_number: updatedUser.phone_number,
           country: updatedUser.country,
           city: updatedUser.city,
+          zip: updatedUser.zip,
           address: updatedUser.address,
           img_url: updatedUser.img_url,
         },
       };
     } catch (error) {
-      // Sizning usersService'dagi errorlar avtomatik throw bo'ladi
-      throw error;
+      console.error("Profile yangilashda xatolik:", error);
+
+      // User Service'dagi specific errorlar
+      if (
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+
+      throw new BadRequestException("Profile yangilashda xatolik yuz berdi.");
     }
   }
 }
-
-
-
-
-
