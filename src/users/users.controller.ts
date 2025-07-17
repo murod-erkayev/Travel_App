@@ -15,6 +15,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import {
   ApiBody,
+  ApiExcludeController,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -23,7 +24,7 @@ import {
 import { PassThrough } from "stream";
 import { Response } from "express";
 import { JwtAuthGuard } from "../common/guards/user.guard";
-
+@ApiExcludeController()
 // @ApiTags("Users")
 @Controller("users")
 export class UsersController {
@@ -63,5 +64,4 @@ export class UsersController {
   }
 
   //Reset Possword
- 
 }

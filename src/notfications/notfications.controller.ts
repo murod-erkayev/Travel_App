@@ -14,11 +14,12 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiExcludeController,
 } from "@nestjs/swagger";
 import { NotficationsService } from "./notfications.service";
 import { CreateNotficationDto } from "./dto/create-notfication.dto";
 import { UpdateNotficationDto } from "./dto/update-notfication.dto";
-
+@ApiExcludeController()
 @ApiTags("Notfications")
 @Controller("notifications") // notfications -> notifications
 export class NotficationsController {

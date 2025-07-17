@@ -100,7 +100,7 @@ export class Location {
     description: "Faollik holati (true - faol, false - nofaol)",
     required: false,
   })
-  @Column({ nullable: true })
+  @Column({ nullable: true,default:true })
   is_active: string;
 
   // Relations

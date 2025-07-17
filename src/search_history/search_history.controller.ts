@@ -14,11 +14,12 @@ import {
   ApiResponse,
   ApiParam,
   ApiBody,
+  ApiExcludeController,
 } from "@nestjs/swagger";
 import { CreateSearchHistoryDto } from "./dto/create-search_history.dto";
 import { UpdateSearchHistoryDto } from "./dto/update-search_history.dto";
 import { SearchHistoryService } from "./search_history.service";
-
+@ApiExcludeController()
 @ApiTags("Search History")
 @Controller("search-history")
 export class SearchHistoryController {

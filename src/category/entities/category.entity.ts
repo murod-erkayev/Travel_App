@@ -1,6 +1,13 @@
 import { Location } from "./../../locations/entities/location.entity";
 import { ApiProperty } from "@nestjs/swagger";
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  Entity,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 
 @Entity("category")
 export class Category {
@@ -34,11 +41,40 @@ export class Category {
   @Column({ nullable: true })
   category_img_url: string;
 
+  @Column({ nullable: true })
+  rating: number;
+
+  @Column({ nullable: true })
+  is_active: boolean;
+
+  @Column({ nullable: true })
+  parent_id: number;
+  // Parent relationship
+
+  @ApiProperty({
+    description: "Ota kategoriya (agar mavjud bo'lsa)",
+    type: () => Category,
+    required: false,
+  })
+  @ManyToOne(() => Category, (category) => category.children, {
+    nullable: true,
+  })
+  @JoinColumn({ name: "parent_id" })
+  parent: Category;
+
+  @ApiProperty({
+    description: "Bolalar kategoriyalar",
+    type: () => [Category],
+    required: false,
+  })
+  @OneToMany(() => Category, (category) => category.parent)
+  children: Category[];
+
   @ApiProperty({
     description: "Ushbu kategoriyaga tegishli locationlar",
     type: () => [Location],
     required: false,
   })
   @OneToMany(() => Location, (location) => location.category)
-  location: Location[]; // location emas, locations bo'lishi kerak
+  location: Location[];
 }

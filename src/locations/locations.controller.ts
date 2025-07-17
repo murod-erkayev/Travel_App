@@ -16,11 +16,12 @@ import {
   ApiParam,
   ApiBody,
   ApiQuery,
+  ApiExcludeController,
 } from "@nestjs/swagger";
 import { LocationsService } from "./locations.service";
 import { CreateLocationDto } from "./dto/create-location.dto";
 import { UpdateLocationDto } from "./dto/update-location.dto";
-
+// @ApiExcludeController()
 @ApiTags("Locations")
 @Controller("locations")
 export class LocationsController {
