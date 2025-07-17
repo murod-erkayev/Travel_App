@@ -41,10 +41,7 @@ export class Category {
   @Column({ nullable: true })
   category_img_url: string;
 
-  @Column({ nullable: true })
-  rating: number;
-
-  @Column({ nullable: true })
+  @Column({ nullable: true, default:true })
   is_active: boolean;
 
   @Column({ nullable: true })

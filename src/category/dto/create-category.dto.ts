@@ -15,8 +15,8 @@ export class CreateCategoryDto {
     description: "Kategoriya tavsifi",
     required: false,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   description?: string;
 
   @ApiProperty({
@@ -24,13 +24,15 @@ export class CreateCategoryDto {
     description: "Category Rasmini yubrish uchun",
     required: false,
   })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   category_img_url?: string;
 
-  @IsNumber()
-  rating?: number;
-
+  @ApiProperty({
+    example: "true",
+    description: "is_active Rasmini yubrish uchun",
+    required: false,
+  })
   @IsBoolean()
   is_active?: boolean;
 
