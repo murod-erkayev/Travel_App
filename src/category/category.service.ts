@@ -19,10 +19,12 @@ export class CategoryService {
 
   // CREATE - XATO TUZATILDI
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
-    const { parent_id } = createCategoryDto;
-
-    if (parent_id) {
-      
+    const { parent_id,name} = createCategoryDto;
+    const categoriesName = await this.categoryRepository.findOne({where:{name}})
+    if (categoriesName) {
+      throw new BadRequestException({ message: `Bunday Categort ${name} mavjud` });
+    } 
+    if (parent_id) {     
       const parentCategory = await this.categoryRepository.findOne({
         where: { id: parent_id }, // parent_id emas, id bo'lishi kerak
       });
