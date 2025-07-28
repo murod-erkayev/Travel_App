@@ -18,16 +18,6 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       logger: WinstonModule.createLogger(winstonConfig),
     });
-
-    // Swaggerga parol qo‘shamiz
-    app.use(
-      ["/api/docs"],
-      basicAuth({
-        users: { kottaAdmin: "12345" }, // login: kottaAdmin, parol: 12345
-        challenge: true,
-      })
-    );
-
     app.use(cookieParser()); // cookie parser qo‘shiladi
     app.useGlobalPipes(new ValidationPipe()); // DTO va validatsiya uchun
     app.setGlobalPrefix("api"); // barcha endpointlar /api/ bilan boshlanadi
